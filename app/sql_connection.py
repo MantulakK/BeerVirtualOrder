@@ -1,0 +1,13 @@
+from flask import *
+from flask_mysqldb import *
+import os
+import mysql.connector
+
+
+database = mysql.connector.connect(
+    host = "localhost",
+    user = "root",
+    password = "",
+    database = "virtualorder"
+)
+
