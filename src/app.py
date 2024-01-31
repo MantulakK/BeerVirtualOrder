@@ -13,6 +13,8 @@ from tables import tables_bp
 #ENDPOINTS CLIENTE
 from mobile_side.mobile_index import mobile_index_bp
 from mobile_side.mobile_food import mobile_food_bp
+from mobile_side.mobile_drink import mobile_drink_bp
+from mobile_side.mobile_cart import mobile_cart_bp
 
 template_dir = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 template_dir = os.path.join(template_dir, 'templates', 'static')
@@ -27,6 +29,8 @@ app.register_blueprint(qrcodes_bp)
 
 app.register_blueprint(mobile_index_bp)
 app.register_blueprint(mobile_food_bp)
+app.register_blueprint(mobile_drink_bp)
+app.register_blueprint(mobile_cart_bp)
 
 #-- APP.ROUTE GENERA UN REDIRECCIONAMIENTO A OTRAS PESTAÑAS CREADAS. SOLO EL "(/)" INDICA LA PAGINA RAIZ PRINCIPAL.
 @app.route('/')

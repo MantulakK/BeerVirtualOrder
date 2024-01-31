@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
     <title>Comida</title>
 </head>
 
@@ -26,7 +28,7 @@
                 <h1 class="center">Menú Comida</h1>
             </div>
             <div class="col-auto">
-                <a class="navbar-brand" href="{{ url_for('mobile_index.mobile_index') }}">
+                <a class="navbar-brand" href="{{ url_for('mobile_index.mobile_index', table_num=table_num) }}">
                     <img src="../static/img/home.png" width="150">
                 </a>
             </div>
@@ -42,6 +44,11 @@
                             <strong><p class="card-text">{{ article.brand }}</p>
                             <p class="card-text">{{ article.description }}</p>
                             <p class="card-text">$ {{ article.single_price }}</p></strong>
+                            <button class="btn btn-primary add-to-cart-btn" style="color: black; background-color: darkseagreen;"
+                            data-article-id="{{ article.id }}"
+                            data-article-name="{{ article.name }}"
+                            onclick="openQuantityModal(this)"
+                            data-article-price="{{ article.single_price }}">Al Carrito<i class="fa fa-cart-plus" aria-hidden="true"></i></button>
                             <!-- Puedes agregar más detalles aquí según sea necesario -->
                         </div>
                     </div>
@@ -49,6 +56,140 @@
             {% endfor %}
         </div>
     </div>
-    <!-- Agrega tus scripts aquí si es necesario -->
+
+<!-- Al final del archivo -->
+<div class="modal fade" id="quantityModal" tabindex="-1" aria-labelledby="quantityModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quantityModalLabel" style="color: black">Ingresar Cantidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="number" class="form-control" id="modalQuantityInput" value="1" min="1">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmQuantityBtn" onclick="addToCart()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 </body>
+
+<script>
+    function openQuantityModal(btn) {
+        // Obtiene los datos del botón
+        let articleId = btn.getAttribute('data-article-id');
+        let articleName = btn.getAttribute('data-article-name');
+        let articlePrice = btn.getAttribute('data-article-price');
+
+        // Configura los datos en el modal
+        modalQuantityInput.value = 1;
+        modalQuantityInput.setAttribute('data-article-id', articleId);
+        modalQuantityInput.setAttribute('data-article-name', articleName);
+        modalQuantityInput.setAttribute('data-article-price', articlePrice);
+
+        // Muestra el modal
+        modal.show();
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        let cartItems = [];
+
+        // Obtén referencias a los elementos relevantes del modal
+        let modal = new bootstrap.Modal(document.getElementById('quantityModal'));
+        let modalQuantityInput = document.getElementById('modalQuantityInput');
+        let confirmQuantityBtn = document.getElementById('confirmQuantityBtn');
+
+        // Evento para abrir el modal
+        document.querySelectorAll('.add-to-cart-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                // Al abrir el modal, asigna los datos del artículo al modal
+                modalQuantityInput.value = 1; // Restablece la cantidad a 1 al abrir el modal
+                modalQuantityInput.setAttribute('data-article-id', btn.getAttribute('data-article-id'));
+                modalQuantityInput.setAttribute('data-article-name', btn.getAttribute('data-article-name'));
+                modalQuantityInput.setAttribute('data-article-price', btn.getAttribute('data-article-price'));
+
+                modal.show();
+            });
+        });
+
+        // Evento para confirmar la cantidad desde el modal
+        confirmQuantityBtn.addEventListener('click', function () {
+            let article = {
+                id: modalQuantityInput.getAttribute('data-article-id'),
+                name: modalQuantityInput.getAttribute('data-article-name'),
+                price: parseFloat(modalQuantityInput.getAttribute('data-article-price')),
+                quantity: parseInt(modalQuantityInput.value)
+            };
+
+            addToCart(article);
+
+            // Cierra el modal después de agregar al carrito
+            modal.hide();
+        });
+
+        function addToCart(article) {
+    // Verificar si el artículo ya está en el carrito
+    let existingItem = cartItems.find(item => item.id === article.id);
+
+    if (existingItem) {
+        // Si ya está en el carrito, actualiza la cantidad
+        existingItem.quantity += article.quantity;
+    } else {
+        // Si no está en el carrito, agrégalo
+        cartItems.push(article);
+    }
+
+    // Actualiza la vista del carrito
+    updateCartView();
+}
+
+function updateCartView() {
+    // Lógica para actualizar la vista del carrito
+    let cartList = document.getElementById('cart-list');
+    let summaryList = document.getElementById('summary-list');
+    let totalPriceElement = document.getElementById('total-price');
+
+    // Limpiar listas antes de volver a llenarlas
+    cartList.innerHTML = '';
+    summaryList.innerHTML = '';
+
+    let totalPrice = 0;
+
+    // Recorre los elementos en el carrito
+    cartItems.forEach(item => {
+        // Crear elementos de lista para mostrar en el carrito
+        let listItem = document.createElement('li');
+        listItem.className = 'list-group-item';
+        listItem.textContent = `${item.name} x${item.quantity} - $${item.price.toFixed(2)}`;
+
+        // Agregar el elemento de lista al carrito
+        cartList.appendChild(listItem);
+
+        // Calcular el subtotal del artículo
+        let subtotal = item.price * item.quantity;
+        totalPrice += subtotal;
+
+        // Crear elementos de lista para mostrar en el resumen del pedido
+        let summaryItem = document.createElement('li');
+        summaryItem.className = 'list-group-item';
+        summaryItem.textContent = `${item.name} x${item.quantity} - $${subtotal.toFixed(2)}`;
+
+        // Agregar el elemento de lista al resumen del pedido
+        summaryList.appendChild(summaryItem);
+    });
+
+    // Mostrar el precio total
+    totalPriceElement.textContent = totalPrice.toFixed(2);
+}
+
+    });
+</script>
+
 </html>
