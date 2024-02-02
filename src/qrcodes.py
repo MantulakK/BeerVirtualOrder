@@ -45,7 +45,7 @@ def create_qrcodes():
     )
 
     # Aquí deberías incluir la información necesaria en el código QR (por ejemplo, la URL y la información de la mesa)
-    data = f"https://068f-2803-a920-8c3-8000-e999-fa02-e44d-6450.ngrok-free.app/mobile_index?table_num={table_num}" 
+    data = f"https://2cf0-2803-a920-8c3-8000-edbe-2a58-f94b-a3c2.ngrok-free.app/mobile_index?table_num={table_num}" 
     
     qr.add_data(data)
     qr.make(fit=True)

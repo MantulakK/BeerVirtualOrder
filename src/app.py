@@ -23,7 +23,6 @@ app.secret_key = os.urandom(24)
 
 app.register_blueprint(articles_bp)
 app.register_blueprint(orders_bp)
-#app.register_blueprint(orderdet_bp)
 app.register_blueprint(tables_bp)
 app.register_blueprint(qrcodes_bp)
 
