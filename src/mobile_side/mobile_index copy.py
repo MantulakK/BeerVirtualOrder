@@ -6,8 +6,6 @@ mobile_index_bp = Blueprint('mobile_index', __name__, url_prefix='/mobile_index'
 @mobile_index_bp.route('/')
 def mobile_index():
     table_num = request.args.get('table_num')
-    if not table_num:
-        return redirect(url_for('mobile_index.connection_denied'))
     return render_template('mobile_index.html', table_num=table_num)
 
 @mobile_index_bp.route('/close_order', methods=['POST'])
@@ -46,7 +44,3 @@ def close_order():
             return jsonify({'status': 'error', 'message': str(e)})
     else:
         return jsonify({'status': 'error', 'message': 'Método no permitido'})
-    
-@mobile_index_bp.route('/error')
-def connection_denied():
-    return render_template('connection_denied.html')

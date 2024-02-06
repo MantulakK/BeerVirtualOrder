@@ -22,7 +22,6 @@
         <div class="row text-center">
 
             <div class="col-12 col-md-6 col-lg-3">
-                <!--<a class="navbar-brand" href="/mobile_food">-->
                 <a class="navbar-brand" href="{{ url_for('mobile_food.mobile_food', table_num=table_num) }}">
                     <img src="../static/img/burguer.png" width="150" alt="Comidas">
                 </a>
@@ -37,7 +36,7 @@
             </div>
 
             <div class="col-12 col-md-6 col-lg-3">
-                <a class="navbar-brand" href="/mobile_cart">
+                <a class="navbar-brand" href="{{ url_for('mobile_cart.mobile_cart', table_num=table_num) }}">
                     <img src="../static/img/cart.png" width="150" alt="Carrito">
                 </a>
                 <h3>Carrito</h3>

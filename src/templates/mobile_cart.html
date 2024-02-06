@@ -29,25 +29,201 @@
                 </ul>
             </div>
             
-            <div class="col-md-4">
+            <div class="col-md-4" style="width: 550px;">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Resumen del Pedido</h5>
-                        <ul id="summary-list" class="list-group">
-                            <!-- Los elementos se agregarán dinámicamente aquí -->
+                        <h5 class="card-title">Resumen de la Orden</h5>
+                        <ul id="cart-list" class="list-group">
+                            {% if order_details %}
+                                {% for detail in order_details %}
+                                    <li class="list-group-item">
+                                        {{ detail[4] }} - c/ {{ detail[1] }} - ${{ detail[2] }}
+                                        {% if detail[3] == 0 %}
+                                            <span class="badge bg-secondary">Sin pedir</span>
+                                            <button class="btn btn-sm btn-primary" onclick="openEditModal('{{ detail[0] }}')">Editar</button>
+                                            <button class="btn btn-sm btn-danger" onclick="removeItem('{{ detail[0] }}')">Eliminar</button>
+                                        {% elif detail[3] == 1 %}
+                                            <span class="badge bg-success" style="background-color: green;">Pedido</span>
+                                        {% endif %}
+
+                                    </li>
+                                {% endfor %}
+                            {% else %}
+                                <li class="list-group-item">No hay elementos en el carrito</li>
+                            {% endif %}
                         </ul>
-                        <p class="card-text">Total: $<span id="total-price">0.00</span></p>
-                        <button id="checkout-btn" class="btn btn-primary">Realizar Pedido</button>
+                        <strong><p class="card-text">Total: $<span id="total-price">{{ total_price }}</span></p></strong>
+                        <button id="checkoutButton" class="btn btn-primary" onclick="checkout()">Realizar Pedidos</button>
                     </div>
                 </div>
             </div>
+
+
+<!-- MODAL PARA EDITAR CANTIDADES -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalLabel">Editar cantidad a pedir</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <div class="mb-3">
+              <label for="editAmount" class="form-label">Cantidad:</label>
+              <input type="number" class="form-control" id="editAmount" name="editAmount" value="1" min="1" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" onclick="saveChanges()">Guardar Cambios</button>
+        </div>
+      </div>
     </div>
+  </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
-    <script>
-        // Aquí agregarás tu lógica de JavaScript para manejar el carrito de compras
-        // Puedes usar AJAX para enviar los datos al servidor, actualizar el carrito dinámicamente, etc.
-    </script>
 </body>
+
+<script>
+    const table_number = localStorage.getItem('table_number');
+    console.log(table_number);
+
+    function checkout() {
+        // Realizar una solicitud al servidor para cambiar el estado detail_state a 1
+        fetch('/mobile_cart/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                table_num: '{{ table_num }}'  // Reemplaza esto por el valor correcto si es necesario
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Si la solicitud fue exitosa, recargar la página para actualizar el carrito
+                window.location.reload();
+            } else {
+                // Si ocurrió un error, mostrar un mensaje de error al usuario
+                alert('Error al realizar el pedido: ' + data.message);
+            }
+        })
+        .catch(error => {
+            // Si ocurrió un error en la solicitud, mostrar un mensaje de error al usuario
+            console.error('Error:', error);
+            alert('Error al realizar el pedido. Por favor, inténtelo de nuevo.');
+        });
+    }
+
+//FUNCION PARA CAMBIAR CANTIDADES
+//FUNCION PARA ABRIR EL MODAL DE EDICIÓN
+function openEditModal(itemId) {
+    const editForm = document.getElementById('editForm');
+    const amountInput = document.getElementById('editAmount');
+    
+    // Obtener la cantidad actual del artículo y establecerla en el campo de entrada del modal
+    const amountSpan = document.getElementById('amount' + itemId);
+    const currentAmount = parseInt(amountSpan.textContent);
+    amountInput.value = currentAmount;
+    
+    // Abrir el modal
+    var myModal = new bootstrap.Modal(document.getElementById('editModal'), {
+        keyboard: false
+    });
+    myModal.show();
+}
+
+//FUNCION PARA GUARDAR LOS CAMBIOS
+function saveChanges(itemId) {
+    const editForm = document.getElementById('editForm');
+    const amountInput = document.getElementById('editAmount');
+    const newAmount = amountInput.value;
+
+    // Realizar una solicitud al servidor para cambiar la cantidad del artículo
+    fetch('/mobile_cart/change_amount', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            item_id: itemId,
+            new_amount: newAmount
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Si la solicitud fue exitosa, actualizar la cantidad del artículo en la página
+            const amountSpan = document.getElementById('amount' + itemId);
+            amountSpan.textContent = newAmount;
+
+            // Cerrar el modal
+            var myModal = new bootstrap.Modal(document.getElementById('editModal'), {
+                keyboard: false
+            });
+            myModal.hide();
+        } else {
+            // Si ocurrió un error, mostrar un mensaje de error al usuario
+            alert('Error al guardar los cambios de cantidad: ' + data.message);
+        }
+    })
+    .catch(error => {
+        // Si ocurrió un error en la solicitud, mostrar un mensaje de error al usuario
+        console.error('Error:', error);
+        alert('Error al guardar los cambios de cantidad. Por favor, inténtelo de nuevo.');
+    });
+}
+
+//#####################################################################################################################################################################
+//FUNCION PARA ELIMINAR EL PEDIDO
+function removeItem(itemId) {
+    // Obtener el número de mesa del localStorage
+
+    // Verificar si el número de mesa está disponible
+    if (!table_number) {
+        alert('Número de mesa no especificado.');
+        return;
+    }
+
+    // Solicitar confirmación al usuario antes de eliminar el artículo
+    const confirmed = confirm('¿Está seguro de que desea eliminar este artículo del carrito?');
+    if (!confirmed) {
+        return; // Si el usuario cancela, salir de la función
+    }
+
+    // Realizar una solicitud al servidor para eliminar el artículo del carrito
+    fetch('/mobile_cart/remove_item', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            item_id: itemId,
+            table_num: table_number  // Incluir el número de mesa en los datos de la solicitud
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Si la solicitud fue exitosa, recargar la página para actualizar el carrito
+            window.location.reload();
+        } else {
+            // Si ocurrió un error, mostrar un mensaje de error al usuario
+            alert('Error al eliminar el artículo del carrito: ' + data.message);
+        }
+    })
+    .catch(error => {
+        // Si ocurrió un error en la solicitud, mostrar un mensaje de error al usuario
+        console.error('Error:', error);
+        alert('Error al eliminar el artículo del carrito. Por favor, inténtelo de nuevo.');
+    });
+}
+
+</script>
+
+
 </html>

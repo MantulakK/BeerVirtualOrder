@@ -58,7 +58,7 @@ def add_to_cart():
             # Insertar en la tabla "order_det"
             if order_id is not None:
                 cursor = db.database.cursor()
-                cursor.execute('INSERT INTO order_det (id_order, id_article, amount, order_price) VALUES (%s, %s, %s, %s)', (order_id, article_id, quantity, orderdet_price))
+                cursor.execute('INSERT INTO order_det (id_order, id_article, amount, detail_state, order_price) VALUES (%s, %s, %s, %s, %s)', (order_id, article_id, quantity, 0, orderdet_price))
                 db.database.commit()
                 cursor.close()
             else:
