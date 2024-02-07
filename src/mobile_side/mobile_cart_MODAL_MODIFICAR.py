@@ -27,7 +27,7 @@ def mobile_cart():
         if existing_order:
             # Obtener los detalles de la orden
             order_id = existing_order['id_order']  # Acceder al valor utilizando el nombre de la columna
-            cursor.execute('SELECT od.id_article, od.amount, od.order_price, od.detail_state, a.name AS article_name, a.single_price AS article_price FROM order_det od INNER JOIN articles a ON od.id_article = a.id_article WHERE od.id_order = %s', (order_id,))
+            cursor.execute('SELECT od.id_article, od.amount, od.order_price, od.detail_state, a.name AS article_name FROM order_det od INNER JOIN articles a ON od.id_article = a.id_article WHERE od.id_order = %s', (order_id,))
             order_details = cursor.fetchall()
             # Calcular el precio total del pedido
             total_price = sum(float(detail['order_price']) for detail in order_details)
@@ -130,8 +130,7 @@ def change_amount():
             data = request.json
             item_id = data.get('item_id')
             new_amount = data.get('new_amount')
-            new_orderPrice = data.get('new_orderPrice')
-            table_num = data.get('table_num')  # Obtener table_num de los datos JSON
+            table_num = request.args.get('table_num')  # Obtener table_num de los argumentos de la solicitud
 
             # Verificar si el número de mesa está especificado
             if not table_num:
@@ -156,7 +155,7 @@ def change_amount():
                 order_id = existing_order[0]
 
                 # Actualizar la cantidad del artículo en la tabla order_det
-                cursor.execute('UPDATE order_det SET amount = %s, order_price = %s WHERE id_order = %s AND id_article = %s', (new_amount, new_orderPrice, order_id, item_id))
+                cursor.execute('UPDATE order_det SET amount = %s WHERE id_order = %s AND id_article = %s', (new_amount, order_id, item_id))
                 db.database.commit()
 
                 return jsonify({'status': 'success'})
