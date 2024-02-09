@@ -7,16 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mainmenulayout.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
 </head>
-<nav class="navbar navbar-dark bg-info">
-    <div class="container">
-    <a class="navbar-brand" href="index.html">
-        <img src="../static/img/almacendecervezaslogo.png" width="200" height="100" alt="Logo" class="img-fluid">
-    </a>
-    <h1>Carrito de Pedidos</h1>
+<body class="bg-dark text-light">
+    <header class="container-fluid">
+        <div class="row justify-content-center align-items-center">
+            <div class="col-12 text-center">
+                <img src="../static/img/almacendecervezaslogo.png" width="500" height="250" alt="Logo">
+            </div>
         </div>
+    </header>
 
-</nav>
-
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-12">
+                <h1>Carrito</h1>
+            </div>
         </div>
         <div class="row">
             <div class="col-md-8">
@@ -25,7 +29,7 @@
                 </ul>
             </div>
             
-            <div class="col-md-4 mx-auto text-center" style="width: 550px;">
+            <div class="col-md-4" style="width: 550px;">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Resumen de la Orden</h5>
@@ -33,16 +37,17 @@
                             {% if order_details %}
                             {% for detail in order_details %}
                             <li class="list-group-item">
-                                <span id="sPrice{{ detail.id_article }}" style="display: none;">{{ detail.article_price }}</span> {{ detail.article_name }} - c/ <span id="amount{{ detail.id_article }}">{{ detail.amount }}</span> - $<span id="orderPrice{{ detail.id_article}}">{{ detail.order_price }}</span>
-                                
+                                {{ detail.article_name }} - c/ {{ detail.amount }} - ${{ detail.order_price }}
                                 {% if detail.detail_state == 0 %}
                                     <span class="badge bg-secondary">Sin pedir</span>
-                                    <button class="btn btn-sm btn-primary" onclick="decreaseQuantity('{{ detail.id_article }}')">-</button>
-                                    <button class="btn btn-sm btn-primary" onclick="increaseQuantity('{{ detail.id_article }}')">+</button>
-                                    <button class="btn btn-sm btn-danger" onclick="removeItem('{{ detail.id_article }}')">Quitar Pedido</button>
+                                    <button class="btn btn-sm btn-primary" onclick="openEditModal('{{ detail.id_article }}')">
+                                        Editar
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="removeItem('{{ detail.id_article }}')">Eliminar</button>
                                 {% elif detail.detail_state == 1 %}
                                     <span class="badge bg-success" style="background-color: green;">Pedido</span>
                                 {% endif %}
+                                <span id="amount{{ detail.id_article }}" style="display: none;">{{ detail.amount }}</span>
                             </li>
                         {% endfor %}
                             {% else %}
@@ -54,6 +59,32 @@
                     </div>
                 </div>
             </div>
+
+
+<!-- MODAL PARA EDITAR CANTIDADES -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalLabel" style="color: black">Modificar cantidad a pedir</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <div class="mb-3">
+              <label for="editAmount" class="form-label">Cantidad:</label>
+              <input type="number" class="form-control" id="editAmount" name="editAmount" value="1" min="1" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" onclick="saveChanges(this)">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 </body>
@@ -89,44 +120,28 @@
         });
     }
 
-// FUNCION PARA AUMENTAR LA CANTIDAD
-function increaseQuantity(itemId) {
+//FUNCION PARA CAMBIAR CANTIDADES
+//FUNCION PARA ABRIR EL MODAL DE EDICIÓN
+function openEditModal(itemId) {
+    const amountInput = document.getElementById('editAmount');
+    
+    // Obtener la cantidad actual del artículo y establecerla en el campo de entrada del modal
     const amountSpan = document.getElementById('amount' + itemId);
-    const orderPriceSpan = document.getElementById('orderPrice' + itemId); // Cambiado de 'order-price' a 'orderPrice'
-    const articlePriceSpan = document.getElementById('sPrice' + itemId);
-    if (amountSpan && orderPriceSpan && articlePriceSpan) {
-        let currentAmount = parseInt(amountSpan.textContent);
-        let currentOrderPrice = parseInt(orderPriceSpan.textContent);
-        let articlePrice = parseInt(articlePriceSpan.textContent);
-        currentAmount++;
-        currentOrderPrice = currentAmount* articlePrice;
-        updateQuantityOnServer(itemId, currentAmount, amountSpan, currentOrderPrice, orderPriceSpan, articlePrice, articlePriceSpan);
-    } else {
-        console.error('Error: Los elementos span no se encontraron');
-    }
+    const currentAmount = parseInt(amountSpan.textContent);
+    amountInput.value = currentAmount;
+    
+    // Abrir el modal
+    var myModal = new bootstrap.Modal(document.getElementById('editModal'), {
+        keyboard: false
+    });
+    myModal.show();
 }
 
-// FUNCION PARA DISMINUIR LA CANTIDAD
-function decreaseQuantity(itemId) {
-    const amountSpan = document.getElementById('amount' + itemId);
-    const orderPriceSpan = document.getElementById('orderPrice' + itemId); // Cambiado de 'order-price' a 'orderPrice'
-    const articlePriceSpan = document.getElementById('sPrice' + itemId);
-    if (amountSpan && orderPriceSpan && articlePriceSpan) {
-        let currentAmount = parseInt(amountSpan.textContent);
-        let currentOrderPrice = parseInt(orderPriceSpan.textContent);
-        let articlePrice = parseInt(articlePriceSpan.textContent);
-        if (currentAmount > 1) {
-            currentAmount--;
-            currentOrderPrice = currentAmount* articlePrice;
-            updateQuantityOnServer(itemId, currentAmount, amountSpan, currentOrderPrice, orderPriceSpan, articlePrice, articlePriceSpan);
-        }
-    } else {
-        console.error('Error: Los elementos span no se encontraron');
-    }
-}
+//FUNCION PARA GUARDAR LOS CAMBIOS
+function saveChanges(itemId) {
+    const amountInput = document.getElementById('editAmount');
+    const newAmount = amountInput.value;
 
-// FUNCION PARA ACTUALIZAR LA CANTIDAD EN EL SERVIDOR
-function updateQuantityOnServer(itemId, newAmount, amountSpan, newOrderPrice, orderPriceSpan) {
     // Realizar una solicitud al servidor para cambiar la cantidad del artículo
     fetch('/mobile_cart/change_amount', {
         method: 'POST',
@@ -136,17 +151,21 @@ function updateQuantityOnServer(itemId, newAmount, amountSpan, newOrderPrice, or
         body: JSON.stringify({
             item_id: itemId,
             new_amount: newAmount,
-            new_orderPrice: newOrderPrice, // Cambiado de neworderPrice a newOrderPrice
-            table_num: localStorage.getItem('table_number')
+            table_num: localStorage.getItem('table_number') // Obtener el número de mesa del localStorage
         }),
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            // Actualizar visualmente la cantidad en la página
+            // Si la solicitud fue exitosa, actualizar la cantidad del artículo en la página
+            const amountSpan = document.getElementById('amount' + itemId);
             amountSpan.textContent = newAmount;
-            orderPriceSpan.textContent = newOrderPrice; // Cambiado de neworderPrice a newOrderPrice
-            updateTotalPrice();
+
+            // Cerrar el modal
+            var myModal = new bootstrap.Modal(document.getElementById('editModal'), {
+                keyboard: false
+            });
+            myModal.hide();
         } else {
             // Si ocurrió un error, mostrar un mensaje de error al usuario
             alert('Error al guardar los cambios de cantidad: ' + data.message);
@@ -157,19 +176,6 @@ function updateQuantityOnServer(itemId, newAmount, amountSpan, newOrderPrice, or
         console.error('Error:', error);
         alert('Error al guardar los cambios de cantidad. Por favor, inténtelo de nuevo.');
     });
-}
-
-// FUNCION PARA ACTUALIZAR EL PRECIO TOTAL
-function updateTotalPrice() {
-    let total = 0;
-    const itemElements = document.querySelectorAll('[id^="orderPrice"]');
-    itemElements.forEach((itemElement) => {
-        total += parseFloat(itemElement.textContent);
-    });
-    const totalPriceSpan = document.getElementById('total-price');
-    if (totalPriceSpan) {
-        totalPriceSpan.textContent = total.toFixed(2); // Redondear el total a dos decimales
-    }
 }
 
 //#####################################################################################################################################################################

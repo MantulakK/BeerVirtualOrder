@@ -31,6 +31,13 @@ def close_order():
             existing_order = cursor.fetchone()
 
             if existing_order:
+                # Verificar si hay algún registro en "order_det" con detail_state en 0
+                cursor.execute('SELECT COUNT(*) FROM order_det WHERE id_order = %s AND detail_state = %s', (existing_order[0], 0))
+                detail_state_zero_count = cursor.fetchone()[0]
+
+                if detail_state_zero_count > 0:
+                    return jsonify({'status': 'error', 'message': 'Debe confirmar o quitar los pedidos pendientes en el CARRITO antes de cerrar la orden.'})
+
                 # Cerrar la orden
                 order_id = existing_order[0]
                 cursor.execute('SELECT SUM(order_price) FROM order_det WHERE id_order = %s', (order_id,))
