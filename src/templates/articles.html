@@ -118,6 +118,7 @@
                             
                             <strong><label>Precio Unitario</label></strong>
                             <input type="text" class="form-control mb-3" autocomplete="off" placeholder="Insertar Precio" name="single_price" id="single_price" required>
+                        
                         </div>    
                         <div class="modal-footer">
                             <button class="btn btn-success" type="submit" onclick="confirm('CREAR ARTÍCULO?')">Confirmar</button>
@@ -139,7 +140,9 @@
         <th scope="col">Tipo</th>
         <th scope="col">Precio</th>
         <th scope="col">Editar</th>
-        <th scope="col">IMG</th>
+        <th scope="col">Imagen</th>
+
+
     </thead>
     <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
         {% for article in articles %}
@@ -148,6 +151,8 @@
           <td>{{ article['name'] }}</td>
           <td>{{ article['brand'] }}</td>
           <td>{{ article['description'] }}</td>
+          
+          
           <td>
             {% if article['article_type'] == 1 %}
                 Comida
@@ -157,7 +162,7 @@
           </td>
           <td>{{ article['single_price'] }}</td>
           <td><button class="btn btn-primary btn-sm" id="modal{{article.id_article}}" data-bs-toggle="modal" data-bs-target="#modal{{article.id_article}}">EDITAR</button></td>
-          <td><button class="btn btn-primary btn-sm" id="" data-bs-toggle="">IMAGEN</button></td>
+          <td><button class="btn btn-primary btn-sm" id="modal{{article.id_article}}" data-bs-toggle="modal" data-bs-target="#selectImageModal" onclick="openSelectImageModal()">IMAGEN</button></td>
         </tr>
 
         <!-- MODAL DE EDICIÓN  -->
@@ -200,11 +205,33 @@
       {% endfor %}
     </tbody>
 </table>
-
-
             </div>
         </div>
     </div>
+
+<!-- MODAL DE SELECCIÓN DE IMAGEN -->
+<div class="modal fade" id="selectImageModal" tabindex="-1" aria-labelledby="selectImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="selectImageModalLabel" style="color: black;">Seleccionar Imagen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <input type="hidden" name="img_path" id="img_path">
+            </div>
+            <div class="modal-body">
+                <form id="imageForm" enctype="multipart/form-data">
+                    <input type="file" name="imageFile" id="imageFile" accept="image/*">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="uploadImage()">Subir Imagen</button>
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
 <!-- FUNCION PARA LIMPAR LOS CAMPOS DE CREACION  -->
     <script>
         function clearFields() {
@@ -244,6 +271,36 @@
     function openCrearArticuloModal() {
         $('#crearArticuloModal').modal('show');
     }
+
+    // Función para abrir el modal de selección de imagen
+    function openSelectImageModal() {
+        $('#selectImageModal').modal('show');
+    }
+
+    // Función para subir la imagen seleccionada
+    function uploadImage() {
+    var formData = new FormData();
+    var file = $('#imageFile')[0].files[0];
+    formData.append('imageFile', file);
+
+    $.ajax({
+        url: '/upload_image', // Aquí se llama a la ruta /upload_image
+        method: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            var imagePath = response.imagePath;
+            $('#img_path').val(imagePath); // Actualiza el valor del campo img_path en el formulario
+            $('#selectImageModal').modal('hide');
+            console.log(imagePath)
+        },
+        error: function(xhr, status, error) {
+            console.error(error);
+            // Manejar el error de subida de imagen
+        }
+    });
+}
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

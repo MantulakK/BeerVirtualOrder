@@ -1,7 +1,15 @@
 from flask import *
 import sql_connection as db
+import os
 
 articles_bp = Blueprint('articles', __name__, url_prefix='/articles')
+
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @articles_bp.route('/')
 def articles():
@@ -56,3 +64,31 @@ def edit_article(id_article):
         db.database.commit()
 
     return redirect(url_for('articles.articles'))
+
+@articles_bp.route('/upload_image', methods=['POST'])
+def upload_image():
+    if 'imageFile' not in request.files:
+        return jsonify({'error': 'No se seleccionó ninguna imagen'}), 400
+
+    image = request.files['imageFile']
+
+    if image.filename == '':
+        return jsonify({'error': 'No se seleccionó ninguna imagen'}), 400
+
+    if image and allowed_file(image.filename):
+        filename = secure_filename(image.filename)
+        img_path = os.path.join(UPLOAD_FOLDER, filename)
+        image.save(img_path)
+        save_image_path_in_database(img_path)
+        return jsonify({'imagePath': img_path}), 200
+
+    return jsonify({'error': 'Formato de imagen no permitido'}), 400
+
+def save_image_path_in_database(img_path):
+    if img_path:
+        cursor = db.database.cursor()
+        sql = "INSERT INTO articles (img_path) VALUES (%s)"
+        data = (img_path,)
+        cursor.execute(sql, data)
+        db.database.commit()
+        cursor.close()

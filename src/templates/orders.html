@@ -77,23 +77,31 @@
                 {% endif %}
                 {% endwith %}
 
-<!-- TABLA -->
+            <!-- BOTÓN DE TOGGLE -->
+            <div class="mb-3">
+              <select class="form-select" id="tableSelector">
+                  <option value="activeOrders"><strong>Pedidos Abiertos</strong></option>
+                  <option value="otherTable"><strong>Pedidos Cerrados</strong></option>
+              </select>
+          </div>
+
+<!-- TABLA PEDIDOS ABIERTOS -->
+<div id="activeOrdersTableContainer">
+<h2>Pedidos Abiertos</h2>
 <table class="table table-bordered table-dark" id="activeOrdersTable">
     <thead>
         <th scope="col">Orden N°</th>
         <th scope="col">Mesa</th>
         <th scope="col">Estado</th>
-        <th scope="col">Total</th>
         <th scope="col">Fecha/Hora</th>
-        <th scope="col">EDITAR</th>
+        <th scope="col">Ver</th>
     </thead>
     <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
-        {% for openOrder in order %}
+        {% for openOrder in open_orders %}
         <tr>
           <td>{{ openOrder['id_order'] }}</td>
           <td>{{ openOrder['table_num'] }}</td>
           <td>{{ openOrder['order_state'] }}</td>
-          <td>{{ openOrder['total_price'] }}</td>
           <td>{{ openOrder['order_datetime'] }}</td>
           <td><button class="btn btn-primary btn-sm btn-detail" data-bs-toggle="modal" data-bs-target="#orderDetailModal" data-order-id="{{ openOrder['id_order'] }}">Detalle</button></td>
 
@@ -101,7 +109,8 @@
       {% endfor %}
     </tbody>
 </table>
-             
+</div>
+<!--MODAL DETALLE PEDIDOS ABIERTOS-->
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -113,9 +122,9 @@
           <table class="table table-bordered">
             <thead>
               <tr>
-                <th>Artículo</th>
-                <th>Cantidad Pedida</th>
-                <th>Precio del Pedido</th>
+                <th style="color: black;">Artículo</th>
+                <th style="color: black;">Cantidad Pedida</th>
+                <th style="color: black;">Precio del Pedido</th>
               </tr>
             </thead>
             <tbody id="orderDetailBody">
@@ -129,6 +138,34 @@
       </div>
     </div>
   </div>
+
+<!-- TABLA PEDIDOS CERRADOS-->
+            <div id="closedOrderTableContainer" style="display: none;">
+              <h2>Pedidos Cerrados</h2>
+              <table class="table table-bordered table-dark" id="closedOrdersTable">
+                  <thead>
+                      <th scope="col">Orden N°</th>
+                      <th scope="col">Mesa</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Total</th>
+                      <th scope="col">Fecha/Hora</th>
+                      <th scope="col">Ver</th>
+                  </thead>
+                  <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
+                      {% for closedOrder in closed_orders %}
+                      <tr>
+                        <td>{{ closedOrder['id_order'] }}</td>
+                        <td>{{ closedOrder['table_num'] }}</td>
+                        <td>{{ closedOrder['order_state'] }}</td>
+                        <td>${{ closedOrder['total_price'] }}</td>
+                        <td>{{ closedOrder['order_datetime'] }}</td>
+                        <td><a class="btn btn-primary btn-sm" href="{{ url_for('orders.download_ticket', order_id=closedOrder['id_order']) }}">Ticket</a></td>
+              
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+              </table>
+              </div>
 
 
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -151,6 +188,32 @@
 } );
 });
 
+$(document).ready(function() {
+    $('#closedOrdersTable').dataTable( {
+  "language": {
+    "search": "Buscar Registro:",
+    "info": "Mostrando página _PAGE_ de _PAGES_",
+    "lengthMenu": "Mostrando _MENU_ registros",
+    "paginate": {
+      "next": "Siguiente",
+      "previous": "Anterior"
+    }
+  }
+} );
+});
+
+
+                    // Manejar el cambio en el selector de tablas
+                    $('#tableSelector').on('change', function() {
+                        var selectedTable = $(this).val();
+                        if (selectedTable === 'activeOrders') {
+                            $('#activeOrdersTableContainer').show();
+                            $('#closedOrderTableContainer').hide();
+                        } else if (selectedTable === 'otherTable') {
+                            $('#activeOrdersTableContainer').hide();
+                            $('#closedOrderTableContainer').show();
+                        }
+                    });
 
 $(document).ready(function() {
     // Manejar el clic en el botón "Detalle"
@@ -158,14 +221,15 @@ $(document).ready(function() {
       var orderId = $(this).closest('tr').find('td:first').text(); // Obtener el ID de la orden
       // Realizar una solicitud AJAX para obtener el detalle de la orden
       $.ajax({
-        url: '/order_detail/' + orderId, // Ruta para obtener el detalle de la orden, deberás definirla en tu backend
+        url: '/orders/order_detail', // Ruta para obtener el detalle de la orden
         type: 'GET',
+        data: {orderId: orderId}, // Pasar el orderId como parte de los datos de la solicitud
         success: function(response) {
           // Limpiar el cuerpo del modal
           $('#orderDetailBody').empty();
           // Agregar los detalles de la orden al cuerpo del modal
           response.forEach(function(detail) {
-            $('#orderDetailBody').append('<tr><td>' + detail.id_article + '</td><td>' + detail.amount + '</td><td>' + detail.order_price + '</td></tr>');
+            $('#orderDetailBody').append('<tr><td>' + detail.name + '</td><td>' + detail.amount + '</td><td>' + detail.order_price + '</td></tr>');
           });
           // Mostrar el modal
           $('#orderDetailModal').modal('show');
