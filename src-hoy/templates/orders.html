@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Orders</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
+
+<style>
+    body.dark-background {
+        background-color: #333333 !important;
+        color: #ffffff !important;
+    }
+
+    table.dark-table {
+        background-color: #333333 !important;
+    }
+
+    table.dark-table td {
+        color: #000000 !important;
+    }
+</style>
+
+
+</head>
+<body class="bg-dark text-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="color: white;">
+                            Navegación
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                            <li><a class="dropdown-item" href="/articles">Articulos</a></li>
+                            <li><a class="dropdown-item" href="/tables">Mesas</a></li>
+                            <li><a class="dropdown-item" href="/qrcodes">Códigos QR</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col d-flex align-items-center">
+                <h1 class="center">Pedidos</h1>
+            </div>
+            <div class="col-auto">
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <img src="../static/img/home.png" width="150">
+                </a>
+            </div>
+        </div>
+    </div>
+<!--  ESTE BLOQUE SE USA PARA PODER MOSTRAR UN MENSAJE EN CASO DE QUE SE DETECTE UNA INSERCIÓN DE UN ARTICULO CON UN NOMBRE YA EXISTENTE O DE UNA INSERCIÓN EXITOSA    -->
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-info">
+                    <ul>
+                        {% for message in messages %}
+                        <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                    </div>
+                {% endif %}
+                {% endwith %}
+
+<!-- TABLA -->
+<table class="table table-bordered table-dark" id="activeOrdersTable">
+    <thead>
+        <th scope="col">Orden N°</th>
+        <th scope="col">Mesa</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Total</th>
+        <th scope="col">Fecha/Hora</th>
+        <th scope="col">EDITAR</th>
+    </thead>
+    <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
+        {% for openOrder in order %}
+        <tr>
+          <td>{{ openOrder['id_order'] }}</td>
+          <td>{{ openOrder['table_num'] }}</td>
+          <td>{{ openOrder['order_state'] }}</td>
+          <td>{{ openOrder['total_price'] }}</td>
+          <td>{{ openOrder['order_datetime'] }}</td>
+          <td><button class="btn btn-primary btn-sm btn-detail" data-bs-toggle="modal" data-bs-target="#orderDetailModal" data-order-id="{{ openOrder['id_order'] }}">Detalle</button></td>
+
+        </tr>
+      {% endfor %}
+    </tbody>
+</table>
+             
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="orderDetailModalLabel">Detalle de la Orden</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Artículo</th>
+                <th>Cantidad Pedida</th>
+                <th>Precio del Pedido</th>
+              </tr>
+            </thead>
+            <tbody id="orderDetailBody">
+              <!-- Aquí se cargarán los detalles de la orden -->
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!--DATATABLE-->
+    <script>
+    $(document).ready(function() {
+    $('#activeOrdersTable').dataTable( {
+  "language": {
+    "search": "Buscar Registro:",
+    "info": "Mostrando página _PAGE_ de _PAGES_",
+    "lengthMenu": "Mostrando _MENU_ registros",
+    "paginate": {
+      "next": "Siguiente",
+      "previous": "Anterior"
+    }
+  }
+} );
+});
+
+
+$(document).ready(function() {
+    // Manejar el clic en el botón "Detalle"
+    $('#activeOrdersTable').on('click', '.btn-detail', function() {
+      var orderId = $(this).closest('tr').find('td:first').text(); // Obtener el ID de la orden
+      // Realizar una solicitud AJAX para obtener el detalle de la orden
+      $.ajax({
+        url: '/order_detail/' + orderId, // Ruta para obtener el detalle de la orden, deberás definirla en tu backend
+        type: 'GET',
+        success: function(response) {
+          // Limpiar el cuerpo del modal
+          $('#orderDetailBody').empty();
+          // Agregar los detalles de la orden al cuerpo del modal
+          response.forEach(function(detail) {
+            $('#orderDetailBody').append('<tr><td>' + detail.id_article + '</td><td>' + detail.amount + '</td><td>' + detail.order_price + '</td></tr>');
+          });
+          // Mostrar el modal
+          $('#orderDetailModal').modal('show');
+        },
+        error: function(xhr, status, error) {
+          console.error(xhr.responseText);
+        }
+      });
+    });
+  });
+
+</script>
+</body>
+</html>
