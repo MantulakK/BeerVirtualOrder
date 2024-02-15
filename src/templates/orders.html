@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Orders</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>Ordenes - Pedidos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
 
@@ -22,7 +22,6 @@
         color: #000000 !important;
     }
 </style>
-
 
 </head>
 <body class="bg-dark text-light">
@@ -81,13 +80,14 @@
             <div class="mb-3">
               <select class="form-select" id="tableSelector">
                   <option value="activeOrders"><strong>Pedidos Abiertos</strong></option>
-                  <option value="otherTable"><strong>Pedidos Cerrados</strong></option>
+                  <option value="closedOrders"><strong>Pedidos Cerrados</strong></option>
+                  <option value="createOrder"><strong>Crear Pedido</strong></option>
               </select>
           </div>
 
 <!-- TABLA PEDIDOS ABIERTOS -->
 <div id="activeOrdersTableContainer">
-<h2>Pedidos Abiertos</h2>
+<h2>Ordenes Abiertas</h2>
 <table class="table table-bordered table-dark" id="activeOrdersTable">
     <thead>
         <th scope="col">Orden N°</th>
@@ -95,6 +95,7 @@
         <th scope="col">Estado</th>
         <th scope="col">Fecha/Hora</th>
         <th scope="col">Ver</th>
+        <th scope="col">Añadir Pedido</th>
     </thead>
     <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
         {% for openOrder in open_orders %}
@@ -104,12 +105,14 @@
           <td>{{ openOrder['order_state'] }}</td>
           <td>{{ openOrder['order_datetime'] }}</td>
           <td><button class="btn btn-primary btn-sm btn-detail" data-bs-toggle="modal" data-bs-target="#orderDetailModal" data-order-id="{{ openOrder['id_order'] }}">Detalle</button></td>
+          <td><button class="btn btn-primary btn-sm btn-edit" data-bs-toggle="modal" data-bs-target="#editOrderModal" data-order-id="{{ openOrder['id_order'] }}" style="background-color: green;"><i class="fa fa-plus-circle" aria-hidden="true"></i></button></td>
 
         </tr>
       {% endfor %}
     </tbody>
 </table>
 </div>
+
 <!--MODAL DETALLE PEDIDOS ABIERTOS-->
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -139,9 +142,44 @@
     </div>
   </div>
 
+<!-- MODAL PARA AÑADIR PEDIDOS A LA ORDEN -->
+<div class="modal fade" id="editOrderModal" tabindex="-1" aria-labelledby="editOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editOrderModalLabel">Editar Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario para agregar registros a order_detail -->
+                <form id="editOrderForm">
+                    <div class="mb-3">
+                        <label for="articleSelect" class="form-label">Seleccionar Artículo</label>
+                        <select class="form-select" id="articleSelect" name="article_id">
+                            {% for article in articles_fetchall %}
+                                <option value="{{ article.id_article }}" data-single-price="{{ article.single_price }}">{{ article.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantityInput" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="quantityInput" name="quantity" required>
+                    </div>
+                    <input type="hidden" id="orderIdInput" name="order_id"> <!-- Campo oculto para almacenar el ID del pedido -->
+                    <button type="submit" class="btn btn-primary">Agregar</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- TABLA PEDIDOS CERRADOS-->
             <div id="closedOrderTableContainer" style="display: none;">
-              <h2>Pedidos Cerrados</h2>
+              <h2>Ordenes Cerradas</h2>
               <table class="table table-bordered table-dark" id="closedOrdersTable">
                   <thead>
                       <th scope="col">Orden N°</th>
@@ -167,6 +205,29 @@
               </table>
               </div>
 
+<!-- FORMULARIO DE CREACIÓN DE PEDIDOS -->
+<div id="createOrderForm" style="display: none;">
+  <h2>Creación de Orden</h2>
+  <form id="orderForm">
+      <div class="mb-3">
+          <label for="tableSelect" class="form-label">Seleccionar Mesa</label>
+          <select class="form-select" id="tableSelect" name="table_id">
+              {% for table in registered_tables %}
+                  <option value="{{ table.id_table }}">{{ table.table_num }}</option>
+              {% endfor %}
+          </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Crear Pedido</button>
+  </form>
+</div>
+
+<div id="successMessage" class="alert alert-success" style="display: none;">
+  ¡El pedido se ha creado exitosamente!
+</div>
+
+<div id="warningMessage" class="alert alert-warning" style="display: none;">
+  ¡Ya hay una ORDEN ABIERTA para esta mesa! NO se puede crear una nueva orden hasta que se CIERRE la actual.
+</div>
 
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
@@ -180,6 +241,7 @@
     "search": "Buscar Registro:",
     "info": "Mostrando página _PAGE_ de _PAGES_",
     "lengthMenu": "Mostrando _MENU_ registros",
+    "emptyTable": "No hay pedidos abiertos",
     "paginate": {
       "next": "Siguiente",
       "previous": "Anterior"
@@ -203,17 +265,23 @@ $(document).ready(function() {
 });
 
 
-                    // Manejar el cambio en el selector de tablas
-                    $('#tableSelector').on('change', function() {
-                        var selectedTable = $(this).val();
-                        if (selectedTable === 'activeOrders') {
-                            $('#activeOrdersTableContainer').show();
-                            $('#closedOrderTableContainer').hide();
-                        } else if (selectedTable === 'otherTable') {
-                            $('#activeOrdersTableContainer').hide();
-                            $('#closedOrderTableContainer').show();
-                        }
-                    });
+    // Manejar el cambio en el selector de tablas
+    $('#tableSelector').on('change', function() {
+        var selectedTable = $(this).val();
+        if (selectedTable === 'activeOrders') {
+            $('#activeOrdersTableContainer').show();
+            $('#closedOrderTableContainer').hide();
+            $('#createOrderForm').hide();
+        } else if (selectedTable === 'closedOrders') {
+            $('#activeOrdersTableContainer').hide();
+            $('#closedOrderTableContainer').show();
+            $('#createOrderForm').hide();
+        } else if (selectedTable === 'createOrder') {
+            $('#activeOrdersTableContainer').hide();
+            $('#closedOrderTableContainer').hide();
+            $('#createOrderForm').show();
+        }
+    });
 
 $(document).ready(function() {
     // Manejar el clic en el botón "Detalle"
@@ -241,6 +309,88 @@ $(document).ready(function() {
     });
   });
 
+    //FORMULARIO DE CREACIÓN DE PEDIDOS
+    $('#orderForm').on('submit', function(event) {
+        event.preventDefault(); // Evitar el envío del formulario por defecto
+        var formData = $(this).serialize(); // Obtener los datos del formulario
+        var tableNum = $('#tableSelect').val(); // Obtener el número de mesa del formulario
+        console.log(tableNum)
+        // Realizar una solicitud AJAX para verificar si ya hay una orden ABIERTA para la mesa seleccionada
+        $.ajax({
+            type: 'GET',
+            url: '/orders/check_open_order',
+            data: { table_num: tableNum }, // Enviar el número de mesa como parámetro de la solicitud
+            success: function(response) {
+                if (response.exists) {
+                    // Mostrar mensaje de advertencia al usuario
+                    $('#warningMessage').fadeIn().delay(3000).fadeOut(); // Mostrar mensaje por 3 segundos y luego ocultarlo
+                } else {
+                    // No hay una orden ABIERTA para la mesa seleccionada, enviar el formulario
+                    $.ajax({
+                        type: 'POST',
+                        url: '/orders/create_order', // URL a la que se enviarán los datos del formulario
+                        data: formData,
+                        success: function(response) {
+                            // Manejar la respuesta exitosa, si es necesario
+                            console.log(response);
+                            // Mostrar mensaje de éxito al usuario
+                            $('#successMessage').fadeIn().delay(3000).fadeOut(); // Mostrar mensaje por 3 segundos y luego ocultarlo
+                        },
+                        error: function(xhr, status, error) {
+                            // Manejar errores, si es necesario
+                            console.error(xhr.responseText);
+                        }
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                // Manejar errores, si es necesario
+                console.error(xhr.responseText);
+            }
+        });
+    });
+
+    $(document).ready(function() {
+    // Manejar el envío del formulario de creación de detalles de pedido
+    $('#editOrderForm').on('submit', function(event) {
+        event.preventDefault(); // Evitar el envío del formulario por defecto
+        
+        // Obtener el ID del artículo seleccionado
+        var articleId = $('#articleSelect').val();
+        
+        // Obtener el single_price del artículo seleccionado
+        var singlePrice = $('#articleSelect option:selected').data('single-price');
+        
+        // Obtener la cantidad ingresada
+        var quantity = $('#quantityInput').val();
+        
+        // Crear un objeto con los datos del formulario
+        var formData = {
+            article_id: articleId,
+            single_price: singlePrice,
+            quantity: quantity,
+            order_id: $('#orderIdInput').val()
+        };
+        console.log(formData)
+        // Realizar una solicitud AJAX para crear el detalle del pedido
+        $.ajax({
+            type: 'POST',
+            url: '/orders/create_order_detail', // URL a la que se enviarán los datos del formulario
+            data: formData,
+            success: function(response) {
+                // Manejar la respuesta exitosa, si es necesario
+                console.log(response);
+                // Actualizar la página u otra lógica necesaria después de crear el detalle del pedido
+                // Por ejemplo, cerrar el modal
+                $('#editOrderModal').modal('hide');
+            },
+            error: function(xhr, status, error) {
+                // Manejar errores, si es necesario
+                console.error(xhr.responseText);
+            }
+        });
+    });
+});
 </script>
 </body>
 </html>

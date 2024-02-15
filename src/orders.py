@@ -5,24 +5,13 @@ from flask import current_app
 from openpyxl import Workbook
 from datetime import datetime
 import os
-
+import io
 
 orders_bp = Blueprint('orders', __name__, url_prefix='/orders')
 
-# @orders_bp.route('/')
-# def orders():
-#     cursor = db.database.cursor()
-#     cursor.execute('SELECT o.id_order, o.id_table, o.order_state, o.total_price, o.order_datetime, t.table_num FROM `order` o INNER JOIN qrtable t ON o.id_table = t.id_table WHERE o.order_state = "ABIERTO"')
-#     column_names = cursor.column_names
-#     my_result = cursor.fetchall()
-#     insert_object = []
-#     for record in my_result:
-#         insert_object.append(dict(zip(column_names, record)))
-#     cursor.close()
-#     return render_template('orders.html', order=insert_object)
-
 @orders_bp.route('/')
 def orders():
+    #CONSULTA PARA OBTENER PEDIDOS CERRADOS
     cursor = db.database.cursor()
     cursor.execute('SELECT o.id_order, o.id_table, o.order_state, o.total_price, o.order_datetime, t.table_num FROM `order` o INNER JOIN qrtable t ON o.id_table = t.id_table WHERE o.order_state = "CERRADO"')
     column_names = cursor.column_names
@@ -32,7 +21,7 @@ def orders():
         closed_orders.append(dict(zip(column_names, record)))
     cursor.close()
     
-    # Consulta para obtener los pedidos abiertos
+    #CONSULTA PARA OBTENER PEDIDOS ABIERTOS
     cursor = db.database.cursor()
     cursor.execute('SELECT o.id_order, o.id_table, o.order_state, o.total_price, o.order_datetime, t.table_num FROM `order` o INNER JOIN qrtable t ON o.id_table = t.id_table WHERE o.order_state = "ABIERTO"')
     column_names = cursor.column_names
@@ -41,8 +30,28 @@ def orders():
     for record in my_result:
         open_orders.append(dict(zip(column_names, record)))
     cursor.close()
-    
-    return render_template('orders.html', open_orders=open_orders, closed_orders=closed_orders)
+
+    #CONSULTA PARA OBTENER TODAS LAS MESAS CARGADAS
+    cursor = db.database.cursor()
+    cursor.execute('SELECT * from qrtable')
+    column_names = cursor.column_names
+    my_result = cursor.fetchall()
+    registered_tables = []
+    for record in my_result:
+        registered_tables.append(dict(zip(column_names, record)))
+    cursor.close()
+
+    #CONSULTA PARA OBTENER ARTICULOS
+    cursor = db.database.cursor()
+    cursor.execute('SELECT * from articles ORDER BY article_type ASC')
+    column_names = cursor.column_names
+    my_result = cursor.fetchall()
+    articles_fetchall = []
+    for record in my_result:
+        articles_fetchall.append(dict(zip(column_names, record)))
+    cursor.close()
+
+    return render_template('orders.html', open_orders=open_orders, closed_orders=closed_orders, registered_tables=registered_tables, articles_fetchall=articles_fetchall)
 
 @orders_bp.route('/order_detail', methods=['GET'])
 def order_detail():
@@ -63,6 +72,7 @@ def order_detail():
     cursor.close()
     return jsonify(detail_list)
 
+##FUNCION PARA DESCARGAR UN EXCEL CON LA INFORMACIÓN DE UN PEDIDO CERRADO (TICKET)
 @orders_bp.route('/download_ticket/<int:order_id>', methods=['GET'])
 def download_ticket(order_id):
     # Obtener los detalles del pedido desde la base de datos
@@ -80,24 +90,84 @@ def download_ticket(order_id):
         ws = wb.active
 
         # Escribir los encabezados
-        ws.append(["Nombre del Negocio:", "Datos del Pedido:"])
+        ws.append(["ALMACEN DE LA CERVEZA:", "Datos del Pedido:"])
         ws.append(["", ""])
         ws.append(["", "Número de Orden:", order_details[0]])
         ws.append(["", "Precio:", order_details[1]])
         ws.append(["", "Día y Fecha:", order_datetime.strftime("%Y-%m-%d %H:%M:%S")])
 
-        # Obtener la ruta del directorio del escritorio
-        desktop_dir = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-
-        # Guardar el libro de Excel en el escritorio
-        file_path = os.path.join(desktop_dir, f"ticket_{order_id}.xlsx")
-        wb.save(file_path)
-
         # Crear una respuesta para descargar el archivo
-        response = make_response(send_file(file_path, as_attachment=True, attachment_filename=f"ticket_{order_id}.xlsx"))
+        response = make_response()
+
+        # Adjuntar el contenido del libro de Excel a la respuesta
+        with io.BytesIO() as output:
+            wb.save(output)
+            response.data = output.getvalue()
+
+        # Establecer los encabezados de la respuesta
         response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = 'attachment; filename="ticket_{}.xlsx"'.format(order_id)
 
         return response
     else:
         # Si no se encuentra el pedido, devolver un mensaje de error
         return "Pedido no encontrado", 404
+
+@orders_bp.route('/check_open_order', methods=['GET'])
+def check_open_order():
+    table_num = request.args.get('table_num')  # Obtener el número de mesa de la solicitud
+
+    # Consultar la base de datos para verificar si hay una orden ABIERTA para la mesa seleccionada
+    cursor = db.database.cursor()
+    cursor.execute('SELECT * FROM `order` WHERE id_table = %s AND order_state = "ABIERTO"', (table_num,))
+    existing_order = cursor.fetchone()
+    cursor.close()
+
+    if existing_order:
+        # Si ya hay una orden ABIERTA para la mesa seleccionada, devolver True
+        return jsonify({'exists': True})
+    else:
+        # Si no hay una orden ABIERTA para la mesa seleccionada, devolver False
+        return jsonify({'exists': False})
+
+
+@orders_bp.route('/create_order', methods=['POST'])
+def create_order():
+    # Obtener los datos del formulario
+    table_id = request.form.get('table_id')
+    
+    # Obtener la fecha y hora actuales
+    order_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Establecer el estado del pedido como ABIERTO
+    order_state = 'ABIERTO'
+    
+    # Insertar el nuevo pedido en la base de datos
+    cursor = db.database.cursor()
+    cursor.execute('INSERT INTO `order` (id_table, order_datetime, order_state, total_price) VALUES (%s, %s, %s, %s)', (table_id, order_datetime, order_state, 0))
+    db.database.commit()
+    cursor.close()
+
+    # Devolver una respuesta de éxito
+    return 'Pedido creado exitosamente', 200
+
+@orders_bp.route('/create_order_detail', methods=['POST'])
+def create_order_detail():
+    try:
+        # Obtener los datos del formulario de la solicitud AJAX
+        order_id = request.form.get('order_id')
+        article_id = request.form.get('article_id')
+        amount = request.form.get('amount')
+        single_price = request.form.get('single_price')
+        order_price = single_price * amount
+        # Realizar la inserción en la tabla order_det en la base de datos
+        cursor = db.database.cursor()
+        cursor.execute('INSERT INTO order_det (id_order, id_article, amount, order_price, detail_state) VALUES (%s, %s, %s, %s, %s)', (order_id, article_id, amount, order_price, 1))
+        db.database.commit()
+        cursor.close()
+
+        # Devolver una respuesta de éxito
+        return jsonify({'message': 'Detalle del pedido creado correctamente'}), 200
+    except Exception as e:
+        # Manejar cualquier error que pueda ocurrir durante la creación del detalle del pedido
+        return jsonify({'error': str(e)}), 500
