@@ -157,12 +157,25 @@ def create_order_detail():
         # Obtener los datos del formulario de la solicitud AJAX
         order_id = request.form.get('order_id')
         article_id = request.form.get('article_id')
-        amount = request.form.get('amount')
+        quantity = request.form.get('quantity')  # Corregido: obtener la cantidad en lugar de amount
         single_price = request.form.get('single_price')
-        order_price = single_price * amount
+        
+        # Verificar si los valores son válidos
+        if not all([order_id, article_id, quantity, single_price]):
+            raise ValueError('Faltan datos en la solicitud')
+        
+        # Convertir los valores a números enteros para el cálculo
+        order_id = int(order_id)
+        article_id = int(article_id)
+        quantity = int(quantity)
+        single_price = int(single_price)
+        
+        # Calcular el precio total del pedido
+        order_price = single_price * quantity
+        
         # Realizar la inserción en la tabla order_det en la base de datos
         cursor = db.database.cursor()
-        cursor.execute('INSERT INTO order_det (id_order, id_article, amount, order_price, detail_state) VALUES (%s, %s, %s, %s, %s)', (order_id, article_id, amount, order_price, 1))
+        cursor.execute('INSERT INTO order_det (id_order, id_article, amount, order_price, detail_state) VALUES (%s, %s, %s, %s, %s)', (order_id, article_id, quantity, order_price, 1))
         db.database.commit()
         cursor.close()
 
@@ -170,4 +183,26 @@ def create_order_detail():
         return jsonify({'message': 'Detalle del pedido creado correctamente'}), 200
     except Exception as e:
         # Manejar cualquier error que pueda ocurrir durante la creación del detalle del pedido
+        return jsonify({'error': str(e)}), 500
+
+@orders_bp.route('/close_order', methods=['POST'])
+def close_order():
+    try:
+        # Obtener el ID de la orden de la solicitud AJAX
+        order_id = request.form.get('order_id')
+        
+        # Sumar los precios de los detalles del pedido
+        cursor = db.database.cursor()
+        cursor.execute('SELECT SUM(order_price) FROM order_det WHERE id_order = %s', (order_id,))
+        total_price = cursor.fetchone()[0]
+        
+        # Actualizar el estado de la orden a "CERRADO"
+        cursor.execute('UPDATE `order` SET order_state = %s, total_price = %s WHERE id_order = %s', ('CERRADO', total_price, order_id))
+        db.database.commit()
+        cursor.close()
+        
+        # Devolver una respuesta de éxito
+        return jsonify({'message': 'Orden cerrada correctamente'}), 200
+    except Exception as e:
+        # Manejar cualquier error que pueda ocurrir durante el cierre de la orden
         return jsonify({'error': str(e)}), 500

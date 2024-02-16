@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ordenes - Pedidos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
+
+<style>
+    body.dark-background {
+        background-color: #333333 !important;
+        color: #ffffff !important;
+    }
+
+    table.dark-table {
+        background-color: #333333 !important;
+    }
+
+    table.dark-table td {
+        color: #000000 !important;
+    }
+</style>
+
+</head>
+<body class="bg-dark text-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="color: white;">
+                            Navegación
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                            <li><a class="dropdown-item" href="/articles">Articulos</a></li>
+                            <li><a class="dropdown-item" href="/tables">Mesas</a></li>
+                            <li><a class="dropdown-item" href="/qrcodes">Códigos QR</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col d-flex align-items-center">
+                <h1 class="center">Pedidos</h1>
+            </div>
+            <div class="col-auto">
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <img src="../static/img/home.png" width="150">
+                </a>
+            </div>
+        </div>
+    </div>
+<!--  ESTE BLOQUE SE USA PARA PODER MOSTRAR UN MENSAJE EN CASO DE QUE SE DETECTE UNA INSERCIÓN DE UN ARTICULO CON UN NOMBRE YA EXISTENTE O DE UNA INSERCIÓN EXITOSA    -->
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-info">
+                    <ul>
+                        {% for message in messages %}
+                        <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                    </div>
+                {% endif %}
+                {% endwith %}
+
+            <!-- BOTÓN DE TOGGLE -->
+            <div class="mb-3">
+              <select class="form-select" id="tableSelector">
+                  <option value="activeOrders"><strong>Pedidos Abiertos</strong></option>
+                  <option value="closedOrders"><strong>Pedidos Cerrados</strong></option>
+                  <option value="createOrder"><strong>Crear Pedido</strong></option>
+              </select>
+          </div>
+
+<!-- TABLA PEDIDOS ABIERTOS -->
+<div id="activeOrdersTableContainer">
+<h2>Ordenes Abiertas</h2>
+<table class="table table-bordered table-dark" id="activeOrdersTable">
+    <thead>
+        <th scope="col">Orden N°</th>
+        <th scope="col">Mesa</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Fecha/Hora</th>
+        <th scope="col">Ver</th>
+        <th scope="col">Pedido</th>
+        <th scope="col">Cierre</th>
+    </thead>
+    <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
+        {% for openOrder in open_orders %}
+        <tr>
+          <td>{{ openOrder['id_order'] }}</td>
+          <td>{{ openOrder['table_num'] }}</td>
+          <td>{{ openOrder['order_state'] }}</td>
+          <td>{{ openOrder['order_datetime'] }}</td>
+          <td><button class="btn btn-primary btn-sm btn-detail" data-bs-toggle="modal" data-bs-target="#orderDetailModal" data-order-id="{{ openOrder['id_order'] }}">Detalle</button></td>
+          <td><button class="btn btn-primary btn-sm btn-edit" data-bs-toggle="modal" data-bs-target="#editOrderModal" data-order-id="{{ openOrder['id_order'] }}" style="background-color: green;"><i class="fa fa-plus-circle" aria-hidden="true"></i></button></td>
+          <td><button class="btn btn-danger btn-sm btn-close-order" data-order-id="{{ openOrder['id_order'] }}" style="background-color: red;">Cerrar Orden</button></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<!--MODAL DETALLE PEDIDOS ABIERTOS-->
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="orderDetailModalLabel">Detalle de la Orden</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th style="color: black;">Artículo</th>
+                <th style="color: black;">Cantidad Pedida</th>
+                <th style="color: black;">Precio del Pedido</th>
+              </tr>
+            </thead>
+            <tbody id="orderDetailBody">
+              <!-- Aquí se cargarán los detalles de la orden -->
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- MODAL PARA AÑADIR PEDIDOS A LA ORDEN -->
+<div class="modal fade" id="editOrderModal" tabindex="-1" aria-labelledby="editOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editOrderModalLabel">Editar Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario para agregar registros a order_detail -->
+                <form id="editOrderForm">
+                    <div class="mb-3">
+                        <label for="articleSelect" class="form-label">Seleccionar Artículo</label>
+                        <select class="form-select" id="articleSelect" name="article_id">
+                            {% for article in articles_fetchall %}
+                                <option value="{{ article.id_article }}" data-single-price="{{ article.single_price }}">{{ article.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantityInput" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="quantityInput" name="quantity" required>
+                    </div>
+                    <input type="hidden" id="orderIdInput" name="order-id"> <!-- Campo oculto para almacenar el ID del pedido -->
+                    <button type="submit" class="btn btn-primary">Agregar</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CONFIRMACIÓN DE CIERRE DE ORDEN -->
+<div class="modal fade" id="confirmCloseOrderModal" tabindex="-1" aria-labelledby="confirmCloseOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmCloseOrderModalLabel">Confirmar Cierre de Orden</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                ¿Estás seguro de que quieres cerrar esta orden? ESTA OPCIÓN NO SE PUEDE DESHACER
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CANCELAR</button>
+                <button type="button" class="btn btn-danger btn-confirm-close-order">ACEPTAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TABLA PEDIDOS CERRADOS-->
+            <div id="closedOrderTableContainer" style="display: none;">
+              <h2>Ordenes Cerradas</h2>
+              <table class="table table-bordered table-dark" id="closedOrdersTable">
+                  <thead>
+                      <th scope="col">Orden N°</th>
+                      <th scope="col">Mesa</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Total</th>
+                      <th scope="col">Fecha/Hora</th>
+                      <th scope="col">Ver</th>
+                  </thead>
+                  <tbody class="dark-text bg-dark"> <!-- A ESTE ELEMENTO SE LE AGREGAN LOS DATOS DE LA BASE DE DATOS -->
+                      {% for closedOrder in closed_orders %}
+                      <tr>
+                        <td>{{ closedOrder['id_order'] }}</td>
+                        <td>{{ closedOrder['table_num'] }}</td>
+                        <td>{{ closedOrder['order_state'] }}</td>
+                        <td>${{ closedOrder['total_price'] }}</td>
+                        <td>{{ closedOrder['order_datetime'] }}</td>
+                        <td><a class="btn btn-primary btn-sm" href="{{ url_for('orders.download_ticket', order_id=closedOrder['id_order']) }}">Ticket</a></td>
+              
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+              </table>
+              </div>
+
+<!-- FORMULARIO DE CREACIÓN DE PEDIDOS -->
+<div id="createOrderForm" style="display: none;">
+  <h2>Creación de Orden</h2>
+  <form id="orderForm">
+      <div class="mb-3">
+          <label for="tableSelect" class="form-label">Seleccionar Mesa</label>
+          <select class="form-select" id="tableSelect" name="table_id">
+              {% for table in registered_tables %}
+                  <option value="{{ table.id_table }}">{{ table.table_num }}</option>
+              {% endfor %}
+          </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Crear Pedido</button>
+  </form>
+</div>
+
+<div id="successMessage" class="alert alert-success" style="display: none;">
+  ¡El pedido se ha creado exitosamente!
+</div>
+
+<div id="warningMessage" class="alert alert-warning" style="display: none;">
+  ¡Ya hay una ORDEN ABIERTA para esta mesa! NO se puede crear una nueva orden hasta que se CIERRE la actual.
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!--DATATABLE-->
+    <script>
+    $(document).ready(function() {
+    $('#activeOrdersTable').dataTable( {
+  "language": {
+    "search": "Buscar Registro:",
+    "info": "Mostrando página _PAGE_ de _PAGES_",
+    "lengthMenu": "Mostrando _MENU_ registros",
+    "emptyTable": "No hay pedidos abiertos",
+    "paginate": {
+      "next": "Siguiente",
+      "previous": "Anterior"
+    }
+  }
+} );
+});
+
+$(document).ready(function() {
+    $('#closedOrdersTable').dataTable( {
+  "language": {
+    "search": "Buscar Registro:",
+    "info": "Mostrando página _PAGE_ de _PAGES_",
+    "lengthMenu": "Mostrando _MENU_ registros",
+    "paginate": {
+      "next": "Siguiente",
+      "previous": "Anterior"
+    }
+  }
+} );
+});
+
+    // Manejar el cambio en el selector de tablas
+    $('#tableSelector').on('change', function() {
+        var selectedTable = $(this).val();
+        if (selectedTable === 'activeOrders') {
+            $('#activeOrdersTableContainer').show();
+            $('#closedOrderTableContainer').hide();
+            $('#createOrderForm').hide();
+        } else if (selectedTable === 'closedOrders') {
+            $('#activeOrdersTableContainer').hide();
+            $('#closedOrderTableContainer').show();
+            $('#createOrderForm').hide();
+        } else if (selectedTable === 'createOrder') {
+            $('#activeOrdersTableContainer').hide();
+            $('#closedOrderTableContainer').hide();
+            $('#createOrderForm').show();
+        }
+    });
+
+$(document).ready(function() {
+    // Manejar el clic en el botón "Detalle"
+    $('#activeOrdersTable').on('click', '.btn-detail', function() {
+      var orderId = $(this).closest('tr').find('td:first').text(); // Obtener el ID de la orden
+      // Realizar una solicitud AJAX para obtener el detalle de la orden
+      $.ajax({
+        url: '/orders/order_detail', // Ruta para obtener el detalle de la orden
+        type: 'GET',
+        data: {orderId: orderId}, // Pasar el orderId como parte de los datos de la solicitud
+        success: function(response) {
+          // Limpiar el cuerpo del modal
+          $('#orderDetailBody').empty();
+          // Agregar los detalles de la orden al cuerpo del modal
+          response.forEach(function(detail) {
+            $('#orderDetailBody').append('<tr><td>' + detail.name + '</td><td>' + detail.amount + '</td><td>' + detail.order_price + '</td></tr>');
+          });
+          // Mostrar el modal
+          $('#orderDetailModal').modal('show');
+        },
+        error: function(xhr, status, error) {
+          console.error(xhr.responseText);
+        }
+      });
+    });
+  });
+
+    //FORMULARIO DE CREACIÓN DE PEDIDOS
+    $('#orderForm').on('submit', function(event) {
+        event.preventDefault(); // Evitar el envío del formulario por defecto
+        var formData = $(this).serialize(); // Obtener los datos del formulario
+        var tableNum = $('#tableSelect').val(); // Obtener el número de mesa del formulario
+        console.log(tableNum)
+        // Realizar una solicitud AJAX para verificar si ya hay una orden ABIERTA para la mesa seleccionada
+        $.ajax({
+            type: 'GET',
+            url: '/orders/check_open_order',
+            data: { table_num: tableNum }, // Enviar el número de mesa como parámetro de la solicitud
+            success: function(response) {
+                if (response.exists) {
+                    // Mostrar mensaje de advertencia al usuario
+                    $('#warningMessage').fadeIn().delay(3000).fadeOut(); // Mostrar mensaje por 3 segundos y luego ocultarlo
+                } else {
+                    // No hay una orden ABIERTA para la mesa seleccionada, enviar el formulario
+                    $.ajax({
+                        type: 'POST',
+                        url: '/orders/create_order', // URL a la que se enviarán los datos del formulario
+                        data: formData,
+                        success: function(response) {
+                            // Manejar la respuesta exitosa, si es necesario
+                            console.log(response);
+                            // Mostrar mensaje de éxito al usuario
+                            $('#successMessage').fadeIn().delay(3000).fadeOut(); // Mostrar mensaje por 3 segundos y luego ocultarlo
+                        },
+                        error: function(xhr, status, error) {
+                            // Manejar errores, si es necesario
+                            console.error(xhr.responseText);
+                        }
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                // Manejar errores, si es necesario
+                console.error(xhr.responseText);
+            }
+        });
+    });
+
+
+    $(document).ready(function() {
+    // Manejar el clic en el botón "Añadir Pedido"
+    $('#activeOrdersTable').on('click', '.btn-edit', function() {
+        var orderId = $(this).data('order-id'); // Obtener el ID de la orden desde el botón
+        $('#orderIdInput').val(orderId); // Asignar el ID de la orden al campo oculto
+        console.log("ID de la orden guardado en el input oculto:", orderId); // Agregar console.log para verificar
+    });
+});    
+
+$(document).ready(function() {
+    // Manejar el envío del formulario de creación de detalles de pedido
+    $('#editOrderForm').on('submit', function(event) {
+        event.preventDefault(); // Evitar el envío del formulario por defecto
+    
+        // Obtener el ID del artículo seleccionado
+        var articleId = $('#articleSelect').val();
+
+        // Obtener el single_price del artículo seleccionado
+        var singlePrice = $('#articleSelect option:selected').data('single-price');
+        
+        // Verificar si singlePrice es un valor válido
+        if (singlePrice === undefined || singlePrice === null || isNaN(singlePrice)) {
+            console.error('Error: El precio del artículo no está especificado o no es un número válido.');
+            return; // Detener el proceso si singlePrice no tiene un valor válido
+        }
+        
+        // Obtener la cantidad ingresada
+        var quantity = $('#quantityInput').val();
+        
+        // Verificar si quantity es un valor válido
+        if (!quantity || isNaN(quantity)) {
+            console.error('Error: La cantidad ingresada no es válida.');
+            return; // Detener el proceso si quantity no es un valor válido
+        }
+        
+        // Convertir quantity a un número entero
+        quantity = parseInt(quantity);
+        singlePrice = parseFloat(singlePrice);
+
+        // Verificar si quantity es un valor válido después de convertirlo
+        if (isNaN(quantity) || quantity <= 0) {
+            console.error('Error: La cantidad ingresada no es válida.');
+            return; // Detener el proceso si quantity no es un valor válido después de convertirlo
+        }
+
+        // Obtener el ID del pedido desde el botón de edición
+        var orderId = $('#orderIdInput').val();
+        console.log(orderId)
+
+        // Verificar que orderId no sea una cadena vacía
+        if (!orderId) {
+            console.error('Error: El ID del pedido no está especificado.');
+            return; // Detener el proceso si orderId no tiene un valor válido
+        }
+
+        // Crear un objeto con los datos del formulario
+        var formData = {
+            article_id: articleId,
+            single_price: singlePrice,
+            quantity: quantity,
+            order_id: orderId
+        };
+        console.log(formData)
+        // Realizar una solicitud AJAX para crear el detalle del pedido
+        $.ajax({
+            type: 'POST',
+            url: '/orders/create_order_detail', // URL a la que se enviarán los datos del formulario
+            data: formData,
+            success: function(response) {
+                // Manejar la respuesta exitosa, si es necesario
+                console.log(response);
+                // Actualizar la página u otra lógica necesaria después de crear el detalle del pedido
+                // Por ejemplo, cerrar el modal
+                $('#editOrderModal').modal('hide');
+            },
+            error: function(xhr, status, error) {
+                // Manejar errores, si es necesario
+                console.error(xhr.responseText);
+            }
+        });
+    });
+});
+
+// SCRIPT PARA CERRAR LA ORDEN
+$('#activeOrdersTable').on('click', '.btn-close-order', function() {
+    var orderId = $(this).data('order-id');
+    $('#confirmCloseOrderModal').modal('show');
+    
+    // Manejar el clic en el botón "Sí, Cerrar Orden"
+    $('.btn-confirm-close-order').on('click', function() {
+        // Realizar una solicitud AJAX para cerrar la orden
+        $.ajax({
+            type: 'POST',
+            url: '/orders/close_order',
+            data: { order_id: orderId },
+            success: function(response) {
+                // Actualizar la página u otra lógica necesaria después de cerrar la orden
+                // Por ejemplo, recargar la página
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                console.error(xhr.responseText);
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>
